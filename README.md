@@ -26,18 +26,52 @@ El servicio sigue una arquitectura en capas:
 ### Endpoints Principales
 
 #### Autenticación
-- `POST /api/auth/login` - Login de usuario (público)
-  - Body: `{"email": "string", "password": "string"}`
-  - Response: `{"token": "jwt", "type": "Bearer", "email": "string", "role": "string"}`
+- `POST /api/auth/login`
+  - Public endpoint for user login
+  - Request body:
+    ```json
+    {
+      "email": "string",
+      "password": "string"
+    }
+    ```
+  - Response:
+    ```json
+    {
+      "token": "jwt",
+      "type": "Bearer",
+      "email": "string",
+      "role": "string"
+    }
+    ```
 
 #### Usuarios (Requiere ROLE_ADMIN)
-- `POST /api/users` - Crear usuario
-  - Body: `{"nombre": "string", "email": "string", "password": "string", "rol": "string"}`
-- `PUT /api/users/{id}/password` - Cambiar contraseña
-  - Body: `{"passwordActual": "string", "nuevaPassword": "string"}`
+- `POST /api/users`
+  - Creates a new user
+  - Request body:
+    ```json
+    {
+      "name": "string",
+      "email": "string",
+      "password": "string",
+      "role": "string"
+    }
+    ```
+
+    - `PUT /api/users/{id}/password`
+  - Updates a user's password
+  - Request body:
+    ```json
+    {
+      "currentpassword": "string",
+      "newPassword": "string"
+    }
+    ```
 
 #### Bitácora (Requiere ROLE_ADMIN)
-- `GET /api/binnacle` - Listar todas las entradas de bitácora
+- `GET /api/binnacle`
+  - Returns all binnacle records
+
 
 #### Estado del Servicio
 - `GET /status` - Verificar estado del servicio (público)
@@ -54,7 +88,7 @@ El servicio sigue una arquitectura en capas:
 - `JWT_SECRET`: Clave secreta para firmar JWT (mínimo 256 bits)
 
 ### Estructura del Proyecto
-```
+```text
 auth-service/
 ├── src/main/java/co/edu/corhuila/auth_service/
 │   ├── AuthServiceApplication.java
@@ -62,29 +96,30 @@ auth-service/
 │   │   └── SecurityConfig.java
 │   ├── Controllers/
 │   │   ├── AuthController.java
-│   │   ├── UsuarioControllers.java
-│   │   ├── BitacoraController.java
-│   │   └── StatusController.java
+│   │   ├── BinnacleController.java
+│   │   ├── StatusController.java
+│   │   └── UsurControllers.java
 │   ├── Service/
 │   │   ├── AuthService.java
-│   │   ├── UsuarioService.java
+│   │   ├── JwtFilter.java
 │   │   ├── JwtService.java
-│   │   └── JwtFilter.java
+│   │   └── userService.java
 │   ├── Entity/
-│   │   ├── Usuario.java
-│   │   ├── Rol.java
-│   │   ├── Bitacora.java
-│   │   └── EstadoUsuario.java (enum)
+│   │   ├── Binnacle.java
+│   │   ├── Role.java
+│   │   ├── User.java
+│   │   └── UserStatus.java
 │   ├── Repository/
-│   │   ├── UsuarioRepository.java
-│   │   ├── RolRepository.java
-│   │   └── BitacoraRepository.java
+│   │   ├── BinnacleRepository.java
+│   │   ├── RoleRepository.java
+│   │   └── UserRepository.java
 │   ├── DTO/
+│   │   ├── ApiErrorResponse.java
 │   │   ├── LoginRequest.java
 │   │   ├── LoginResponseDto.java
-│   │   ├── UsuarioRequest.java
-│   │   ├── UsuarioResponse.java
-│   │   └── ApiErrorResponse.java
+│   │   ├── UsurRequest.java
+│   │   ├── UsurResponse.java
+│   │   └── changePasswordRequest.java
 │   └── exception/
 │       └── GlobalExceptionHandler.java
 ├── src/main/resources/
@@ -92,13 +127,12 @@ auth-service/
 ├── Dockerfile
 ├── pom.xml
 └── mvnw*
-```
 
 ### Modelo de Datos
-- **Usuario**: id, nombre, email, password (bcrypt), estado, rol
-- **Rol**: idRol, nombre, descripcion
-- **Bitacora**: id, usuarioId, accion, fechaHora
-- **EstadoUsuario**: ACTIVO, BLOQUEADO
+- **User**: id, name, email, password (bcrypt), state, role
+- **Role**: idRole, name, description
+- **Binnacle**: id, usurId, action, dateTime
+- **UserStatus**: Asset, Blocked
 
 ### Seguridad
 - **Autenticación**: JWT con expiración de 1 hora
