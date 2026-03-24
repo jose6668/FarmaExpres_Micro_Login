@@ -4,6 +4,7 @@ package co.edu.corhuila.auth_service.Config;
 import co.edu.corhuila.auth_service.Service.JwtFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 
@@ -33,11 +34,26 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/users/**").hasRole("ADMIN")
 
+                        .requestMatchers(HttpMethod.GET, "/api/users/**").hasRole("AUDITOR")
 
-                        // SOLO ADMIN
-                        .requestMatchers("/api/binnacle/**").hasRole("ADMIN")
+                        
 
-                        // TODO LO DEMÁS REQUIERE AUTENTICACIÓN
+                        // Password endpoints
+                        .requestMatchers(HttpMethod.PUT, "/api/users/*/password")
+                        .hasAnyRole("ADMIN", "AUDITOR", "FARMACEUTICO")
+                        
+                        // actualizar usuario
+                        .requestMatchers(HttpMethod.PUT, "/api/users/*/update")
+                        .hasAnyRole("ADMIN", "AUDITOR", "FARMACEUTICO")
+
+                        
+                        // Binnacle endpoints
+                        .requestMatchers("/api/binnacle/**")
+                        .hasAnyRole("ADMIN", "AUDITOR")
+                    
+
+
+                        
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
