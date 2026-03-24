@@ -6,12 +6,14 @@ public class UsurResponse {
     private String name;
     private String email;
     private String role;
+    private String state;
 
-    public UsurResponse(Long id, String name, String email, String role) {
+    public UsurResponse(Long id, String name, String email, String role, String state) {
         this.id = id;
         this.name = name;
         this.email = email;
         this.role = role;
+        this.state = state;
     }
 
     public Long getId() {
@@ -44,5 +46,13 @@ public class UsurResponse {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
     }
 }
