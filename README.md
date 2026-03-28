@@ -2,92 +2,50 @@
 
 ## Auth Service
 
-### Descripción
-El servicio de autenticación (`auth-service`) es un microservicio basado en Spring Boot que maneja la autenticación y autorización de usuarios mediante JWT (JSON Web Tokens). Proporciona funcionalidades para login, registro de usuarios, cambio de contraseñas y registro de bitácora de actividades.
+### Overview
+`auth-service` is a Spring Boot microservice responsible for authentication, authorization, and user administration in the FarmaExpres ecosystem.
 
-### Tecnologías Utilizadas
-- **Java**: 17
-- **Spring Boot**: 4.0.3
-- **Spring Security**: Para autenticación y autorización
-- **JWT**: jjwt-api (versión 0.11.5) para tokens de autenticación
-- **Base de Datos**: PostgreSQL con JPA/Hibernate
-- **Build Tool**: Maven
-- **Otras**: Lombok (opcional), Actuator para monitoreo
+It provides:
+- JWT-based authentication
+- User creation and administration
+- User update without password modification
+- Password change
+- User blocking and unblocking
+- User deletion
+- Activity logging through a binnacle module
+- Service health and status endpoints
 
-### Arquitectura
-El servicio sigue una arquitectura en capas:
-- **Controllers**: Exposición de APIs REST
-- **Services**: Lógica de negocio
-- **Repositories**: Acceso a datos
-- **Entities**: Modelos de datos
-- **DTOs**: Objetos de transferencia de datos
-- **Config**: Configuración de seguridad
+---
 
-### Endpoints Principales
+## Technologies Used
 
-#### Autenticación
-- `POST /api/auth/login`
-  - Public endpoint for user login
-  - Request body:
-    ```json
-    {
-      "email": "string",
-      "password": "string"
-    }
-    ```
-  - Response:
-    ```json
-    {
-      "token": "jwt",
-      "type": "Bearer",
-      "email": "string",
-      "role": "string"
-    }
-    ```
+- **Java 17**
+- **Spring Boot 4.0.3**
+- **Spring Security**
+- **JWT (`jjwt-api` 0.11.5)**
+- **PostgreSQL**
+- **Spring Data JPA / Hibernate**
+- **Maven**
+- **Spring Boot Actuator**
 
-#### Usuarios (Requiere ROLE_ADMIN)
-- `POST /api/users`
-  - Creates a new user
-  - Request body:
-    ```json
-    {
-      "name": "string",
-      "email": "string",
-      "password": "string",
-      "role": "string"
-    }
-    ```
+---
 
-    - `PUT /api/users/{id}/password`
-  - Updates a user's password
-  - Request body:
-    ```json
-    {
-      "currentpassword": "string",
-      "newPassword": "string"
-    }
-    ```
+## Implemented Architecture
 
-#### Bitácora (Requiere ROLE_ADMIN)
-- `GET /api/binnacle`
-  - Returns all binnacle records
+The service follows a layered architecture:
 
+- **Controllers**: expose REST endpoints
+- **Services**: implement business logic
+- **Repositories**: manage persistence with Spring Data JPA
+- **Entities**: represent domain objects
+- **DTOs**: define request and response payloads
+- **Config**: security and filter configuration
+- **Exception Handling**: centralized error handling with `GlobalExceptionHandler`
 
-#### Estado del Servicio
-- `GET /status` - Verificar estado del servicio (público)
-- `GET /actuator/health` - Health check (público)
-- `GET /actuator/info` - Información del servicio (público)
+---
 
-### Configuración
+## Project Structure
 
-
-**Variables de entorno requeridas:**
-- `DB_URL`: URL de conexión a PostgreSQL (ej: `jdbc:postgresql://localhost:5432/authdb`)
-- `DB_USERNAME`: Usuario de la base de datos
-- `DB_PASSWORD`: Contraseña de la base de datos
-- `JWT_SECRET`: Clave secreta para firmar JWT (mínimo 256 bits)
-
-### Estructura del Proyecto
 ```text
 auth-service/
 ├── src/main/java/co/edu/corhuila/auth_service/
@@ -119,7 +77,8 @@ auth-service/
 │   │   ├── LoginResponseDto.java
 │   │   ├── UsurRequest.java
 │   │   ├── UsurResponse.java
-│   │   └── changePasswordRequest.java
+│   │   ├── changePasswordRequest.java
+│   │   └── UpdateUserRequest.java
 │   └── exception/
 │       └── GlobalExceptionHandler.java
 ├── src/main/resources/
@@ -127,49 +86,377 @@ auth-service/
 ├── Dockerfile
 ├── pom.xml
 └── mvnw*
+```
 
-### Modelo de Datos
-- **User**: id, name, email, password (bcrypt), state, role
-- **Role**: idRole, name, description
-- **Binnacle**: id, usurId, action, dateTime
-- **UserStatus**: Asset, Blocked
+---
 
-### Seguridad
-- **Autenticación**: JWT con expiración de 1 hora
-- **Autorización**: Basada en roles (ADMIN, USER)
-- **Encriptación**: BCrypt para contraseñas
-- **Filtros**: JwtFilter intercepta requests para validar tokens
-- **Endpoints públicos**: login, status, actuator health/info
-- **Endpoints protegidos**: requieren autenticación, algunos ROLE_ADMIN
+## Domain Model
 
-### Ejecución
-1. **Requisitos previos**:
-   - Java 17
-   - PostgreSQL
-   - Maven
+The auth-service is built around four main domain entities:
 
-2. **Configurar variables de entorno**:
-   ```bash
-   export DB_URL=jdbc:postgresql://localhost:5432/authdb
-   export DB_USERNAME=your_username
-   export DB_PASSWORD=your_password
-   export JWT_SECRET=your_super_secret_key_min_256_bits
-   ```
+### User
+Represents a system user authenticated by the service.
 
-3. **Ejecutar**:
-   ```bash
-   cd auth-service
-   ./mvnw spring-boot:run
-   ```
+**Main attributes:**
+- `id`: unique user identifier
+- `name`: full name of the user
+- `email`: unique email address
+- `password`: encrypted password
+- `state`: current account status
+- `role`: assigned role
 
-4. **Con Docker**:
-   ```bash
-   docker build -t auth-service .
-   docker run -p 8081:8081 --env-file .env auth-service
-   ```
+**Responsibilities:**
+- Store authentication data
+- Store authorization context
+- Allow account state transitions such as block and unlock
 
-### Pruebas
-El proyecto incluye tests unitarios. Ejecutar con:
+---
+
+### Role
+Represents the authorization role assigned to a user.
+
+**Main attributes:**
+- `idRole`: unique role identifier
+- `name`: role name
+- `description`: role description
+
+**Examples of roles:**
+- `ADMIN`
+- `AUDITOR`
+- `FARMACEUTICO`
+
+---
+
+### Binnacle
+Represents an activity log entry generated by the system.
+
+**Main attributes:**
+- `id`: unique log identifier
+- `usurId`: related user identifier
+- `action`: executed action
+- `dateTime`: date and time of the event
+
+**Typical actions logged:**
+- successful login
+- failed login
+- user update
+- password change
+- user block
+- user unlock
+- user deletion
+
+---
+
+### UserStatus
+Represents the current status of a user account.
+
+**Supported values:**
+- `Asset`
+- `Blocked`
+
+This status is used to control whether a user is allowed to authenticate and operate in the system.
+
+---
+
+## Main Endpoints
+
+The service exposes endpoints for authentication, user administration, activity logging, and health monitoring.
+
+### 1. Authentication
+
+#### `POST /api/auth/login`
+Authenticates a user and returns a JWT token.
+
+**Request body**
+```json
+{
+  "email": "user@example.com",
+  "password": "your_password"
+}
+```
+
+**Response**
+```json
+{
+  "token": "jwt-token",
+  "type": "Bearer",
+  "email": "user@example.com",
+  "role": "string"
+}
+```
+
+---
+
+### 2. User Management
+
+#### `POST /api/users`
+Creates a new user.
+
+**Request body**
+```json
+{
+  "name": "Juan Perez",
+  "email": "juan@example.com",
+  "password": "SecurePassword123",
+  "role": "ADMIN"
+}
+```
+
+---
+
+#### `GET /api/users`
+Returns the list of registered users.
+
+**Response**
+```json
+[
+  {
+    "id": 1,
+    "name": "Juan Perez",
+    "email": "juan@example.com",
+    "role": "ADMIN",
+    "state": "Asset"
+  }
+]
+```
+
+---
+
+#### `PUT /api/users/{id}/update`
+Updates a user without modifying the password.
+
+**Request body**
+```json
+{
+  "name": "Juan Updated",
+  "email": "juan.updated@example.com",
+  "role": "AUDITOR"
+}
+```
+
+**Notes**
+- This endpoint does not update the password.
+- It can be used for partial updates depending on the provided fields.
+
+---
+
+#### `PUT /api/users/{id}/password`
+Changes a user's password.
+
+**Request body**
+```json
+{
+  "currentpassword": "OldPassword123",
+  "newPassword": "NewPassword123"
+}
+```
+
+---
+
+#### `PUT /api/users/{id}/block`
+Blocks a user account.
+
+**Response**
+```json
+{
+  "id": 3,
+  "name": "Juan Perez",
+  "email": "juan@example.com",
+  "role": "AUDITOR",
+  "state": "Blocked"
+}
+```
+
+---
+
+#### `PUT /api/users/{id}/unlock`
+Unlocks a previously blocked user account.
+
+**Response**
+```json
+{
+  "id": 3,
+  "name": "Juan Perez",
+  "email": "juan@example.com",
+  "role": "AUDITOR",
+  "state": "Asset"
+}
+```
+
+---
+
+#### `DELETE /api/users/{id}`
+Deletes a user from the system.
+
+**Example response**
+```json
+{
+  "message": "User deleted successfully"
+}
+```
+
+---
+
+### 3. Binnacle
+
+#### `GET /api/binnacle`
+Returns all activity log entries.
+
+**Example response**
+```json
+[
+  {
+    "id": 1,
+    "usurId": 3,
+    "action": "LOGIN_EXITOSO",
+    "dateTime": "2026-03-24T10:15:30"
+  }
+]
+```
+
+---
+
+### 4. Service Status
+
+#### `GET /status`
+Checks whether the service is running.
+
+#### `GET /actuator/health`
+Health check endpoint.
+
+#### `GET /actuator/info`
+General service information endpoint.
+
+---
+
+## Security
+
+The service uses **Spring Security + JWT** for authentication and authorization.
+
+### Authentication
+- JWT-based authentication
+- Token returned after successful login
+- Requests to protected endpoints must include:
+
+```http
+Authorization: Bearer <token>
+```
+
+### Password Security
+- Passwords are encrypted using **BCrypt**
+
+### Public Endpoints
+- `POST /api/auth/login`
+- `GET /status`
+- `GET /actuator/health`
+- `GET /actuator/info`
+
+### Role-Based Authorization
+
+#### ADMIN
+Can access:
+- Create users
+- List users
+- Update users
+- Delete users
+- Block users
+- Unlock users
+- View binnacle
+- Change password
+
+#### AUDITOR
+Can access:
+- View binnacle
+- Change password
+
+#### FARMACEUTICO
+Can access:
+- Change password
+
+---
+
+## Error Handling
+
+The service includes centralized exception management through `GlobalExceptionHandler`.
+
+Error responses are returned using a structured format similar to:
+
+```json
+{
+  "timestamp": "2026-03-24T03:20:00.722373359",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Rol no encontrado",
+  "path": "/api/users/3/update",
+  "service": "auth-service"
+}
+```
+
+**Recommended behavior**
+- `400 Bad Request` for invalid input or business validation errors
+- `404 Not Found` for missing resources
+- `500 Internal Server Error` only for unexpected failures
+
+---
+
+## Configuration
+
+Required environment variables:
+
+- `DB_URL`  
+  PostgreSQL connection URL  
+  Example: `jdbc:postgresql://localhost:5432/authdb`
+
+- `DB_USERNAME`  
+  Database username
+
+- `DB_PASSWORD`  
+  Database password
+
+- `JWT_SECRET`  
+  Secret key used to sign JWT tokens
+
+---
+
+## Run Locally
+
+### Prerequisites
+- Java 17
+- PostgreSQL
+- Maven
+
+### Environment Variables
+```bash
+export DB_URL=jdbc:postgresql://localhost:5432/authdb
+export DB_USERNAME=your_username
+export DB_PASSWORD=your_password
+export JWT_SECRET=your_secret_key
+```
+
+### Start the application
+```bash
+cd auth-service
+./mvnw spring-boot:run
+```
+
+---
+
+## Run with Docker
+
+```bash
+docker build -t auth-service .
+docker run -p 8081:8081 --env-file .env auth-service
+```
+
+---
+
+## Testing
+
+Run tests with:
+
 ```bash
 ./mvnw test
 ```
+
+---
+
