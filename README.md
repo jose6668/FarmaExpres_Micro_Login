@@ -1,462 +1,399 @@
-# FarmaExpres_Micro_Login
+# FarmaExpres Micro Login
 
-## Auth Service
+Microservicio de autenticacion y gestion de usuarios para el ecosistema FarmaExpres. Este proyecto esta implementado con Spring Boot y expone endpoints para login, administracion de usuarios, bitacora de eventos y verificacion de estado del servicio.
 
-### Overview
-`auth-service` is a Spring Boot microservice responsible for authentication, authorization, and user administration in the FarmaExpres ecosystem.
+## Contenido
 
-It provides:
-- JWT-based authentication
-- User creation and administration
-- User update without password modification
-- Password change
-- User blocking and unblocking
-- User deletion
-- Activity logging through a binnacle module
-- Service health and status endpoints
+- API de autenticacion con JWT
+- Administracion de usuarios y roles
+- Cambio de contrasena, bloqueo y desbloqueo de cuentas
+- Registro de eventos en bitacora
+- Endpoints de estado y salud
 
----
+## Stack tecnologico
 
-## Technologies Used
+- Java 17
+- Spring Boot 4.0.3
+- Spring Security
+- Spring Data JPA
+- Spring Validation
+- PostgreSQL
+- JWT con `jjwt` 0.11.5
+- Maven Wrapper
+- Spring Boot Actuator
 
-- **Java 17**
-- **Spring Boot 4.0.3**
-- **Spring Security**
-- **JWT (`jjwt-api` 0.11.5)**
-- **PostgreSQL**
-- **Spring Data JPA / Hibernate**
-- **Maven**
-- **Spring Boot Actuator**
-
----
-
-## Implemented Architecture
-
-The service follows a layered architecture:
-
-- **Controllers**: expose REST endpoints
-- **Services**: implement business logic
-- **Repositories**: manage persistence with Spring Data JPA
-- **Entities**: represent domain objects
-- **DTOs**: define request and response payloads
-- **Config**: security and filter configuration
-- **Exception Handling**: centralized error handling with `GlobalExceptionHandler`
-
----
-
-## Project Structure
+## Estructura del proyecto
 
 ```text
-auth-service/
-├── src/main/java/co/edu/corhuila/auth_service/
-│   ├── AuthServiceApplication.java
-│   ├── Config/
-│   │   └── SecurityConfig.java
-│   ├── Controllers/
-│   │   ├── AuthController.java
-│   │   ├── BinnacleController.java
-│   │   ├── StatusController.java
-│   │   └── UsurControllers.java
-│   ├── Service/
-│   │   ├── AuthService.java
-│   │   ├── JwtFilter.java
-│   │   ├── JwtService.java
-│   │   └── userService.java
-│   ├── Entity/
-│   │   ├── Binnacle.java
-│   │   ├── Role.java
-│   │   ├── User.java
-│   │   └── UserStatus.java
-│   ├── Repository/
-│   │   ├── BinnacleRepository.java
-│   │   ├── RoleRepository.java
-│   │   └── UserRepository.java
-│   ├── DTO/
-│   │   ├── ApiErrorResponse.java
-│   │   ├── LoginRequest.java
-│   │   ├── LoginResponseDto.java
-│   │   ├── UsurRequest.java
-│   │   ├── UsurResponse.java
-│   │   ├── changePasswordRequest.java
-│   │   └── UpdateUserRequest.java
-│   └── exception/
-│       └── GlobalExceptionHandler.java
-├── src/main/resources/
-│   └── application.yaml
-├── Dockerfile
-├── pom.xml
-└── mvnw*
+FarmaExpres_Micro_Login/
+|-- README.md
+`-- auth-service/
+    |-- Dockerfile
+    |-- mvnw
+    |-- mvnw.cmd
+    |-- pom.xml
+    `-- src/
+        |-- main/
+        |   |-- java/co/edu/corhuila/auth_service/
+        |   |   |-- AuthServiceApplication.java
+        |   |   |-- Config/
+        |   |   |-- Controllers/
+        |   |   |-- DTO/
+        |   |   |-- Entity/
+        |   |   |-- Repository/
+        |   |   |-- Service/
+        |   |   |-- Validation/
+        |   |   `-- exception/
+        |   `-- resources/
+        |       `-- application.yaml
+        `-- test/
+            |-- java/
+            `-- resources/
 ```
 
----
+## Arquitectura
 
-## Domain Model
+El microservicio sigue una arquitectura por capas:
 
-The auth-service is built around four main domain entities:
+- `Controllers`: exponen la API REST.
+- `Service`: centraliza la logica de negocio.
+- `Repository`: acceso a datos con Spring Data JPA.
+- `Entity`: modelo persistente del dominio.
+- `DTO`: objetos de entrada y salida de la API.
+- `Validation`: validadores manuales para nombre y correo.
+- `exception`: manejo centralizado de errores.
+
+## Modelo de dominio
 
 ### User
-Represents a system user authenticated by the service.
 
-**Main attributes:**
-- `id`: unique user identifier
-- `name`: full name of the user
-- `email`: unique email address
-- `password`: encrypted password
-- `state`: current account status
-- `role`: assigned role
+Representa un usuario autenticable del sistema.
 
-**Responsibilities:**
-- Store authentication data
-- Store authorization context
-- Allow account state transitions such as block and unlock
-
----
+- `id`: identificador del usuario.
+- `name`: nombre del usuario.
+- `email`: correo unico.
+- `password`: contrasena cifrada con BCrypt.
+- `state`: estado de la cuenta.
+- `role`: rol asignado.
 
 ### Role
-Represents the authorization role assigned to a user.
 
-**Main attributes:**
-- `idRole`: unique role identifier
-- `name`: role name
-- `description`: role description
+Rol funcional asignado a un usuario.
 
-**Examples of roles:**
+- `idRole`
+- `name`
+- `description`
+
+Roles esperados por la configuracion de seguridad:
+
 - `ADMIN`
 - `AUDITOR`
 - `FARMACEUTICO`
 
----
-
 ### Binnacle
-Represents an activity log entry generated by the system.
 
-**Main attributes:**
-- `id`: unique log identifier
-- `usurId`: related user identifier
-- `action`: executed action
-- `dateTime`: date and time of the event
+Bitacora de eventos del sistema.
 
-**Typical actions logged:**
-- successful login
-- failed login
-- user update
-- password change
-- user block
-- user unlock
-- user deletion
+- `id`
+- `userId`
+- `action`
+- `dateTime`
 
----
+Ejemplos de eventos registrados:
+
+- `LOGIN_EXITOSO`
+- `LOGIN_FALLIDO - correo`
+- `CREACION_USUARIO`
+- `ACTUALIZACION_USUARIO`
+- `CAMBIO_PASSWORD`
+- `BLOQUEO_USUARIO`
+- `DESBLOQUEO_USUARIO`
+- `ELIMINACION_USUARIO`
 
 ### UserStatus
-Represents the current status of a user account.
 
-**Supported values:**
+Estados disponibles en la enumeracion:
+
 - `Asset`
+- `Idle`
 - `Blocked`
 
-This status is used to control whether a user is allowed to authenticate and operate in the system.
+Actualmente el flujo principal usa `Asset` y `Blocked` para permitir o denegar autenticacion.
 
----
+## Configuracion
 
-## Main Endpoints
+La aplicacion corre por defecto en el puerto `8081`.
 
-The service exposes endpoints for authentication, user administration, activity logging, and health monitoring.
+Variables de entorno requeridas:
 
-### 1. Authentication
+- `DB_URL`: URL JDBC de PostgreSQL.
+- `DB_USERNAME`: usuario de base de datos.
+- `DB_PASSWORD`: contrasena de base de datos.
+- `JWT_SECRET`: secreto para firmar los tokens JWT.
 
-#### `POST /api/auth/login`
-Authenticates a user and returns a JWT token.
+Configuracion relevante en `application.yaml`:
 
-**Request body**
-```json
-{
-  "email": "user@example.com",
-  "password": "your_password"
-}
-```
+- `spring.jpa.hibernate.ddl-auto=update`
+- zona horaria `UTC` para JPA y Jackson
+- exposicion de `health` e `info` en Actuator
 
-**Response**
-```json
-{
-  "token": "jwt-token",
-  "type": "Bearer",
-  "email": "user@example.com",
-  "role": "string"
-}
-```
+## Ejecucion local
 
----
+### Requisitos
 
-### 2. User Management
-
-#### `POST /api/users`
-Creates a new user.
-
-**Request body**
-```json
-{
-  "name": "Juan Perez",
-  "email": "juan@example.com",
-  "password": "SecurePassword123",
-  "role": "ADMIN"
-}
-```
-
----
-
-#### `GET /api/users`
-Returns the list of registered users.
-
-**Response**
-```json
-[
-  {
-    "id": 1,
-    "name": "Juan Perez",
-    "email": "juan@example.com",
-    "role": "ADMIN",
-    "state": "Asset"
-  }
-]
-```
-
----
-
-#### `PUT /api/users/{id}/update`
-Updates a user without modifying the password.
-
-**Request body**
-```json
-{
-  "name": "Juan Updated",
-  "email": "juan.updated@example.com",
-  "role": "AUDITOR"
-}
-```
-
-**Notes**
-- This endpoint does not update the password.
-- It can be used for partial updates depending on the provided fields.
-
----
-
-#### `PUT /api/users/{id}/password`
-Changes a user's password.
-
-**Request body**
-```json
-{
-  "currentpassword": "OldPassword123",
-  "newPassword": "NewPassword123"
-}
-```
-
----
-
-#### `PUT /api/users/{id}/block`
-Blocks a user account.
-
-**Response**
-```json
-{
-  "id": 3,
-  "name": "Juan Perez",
-  "email": "juan@example.com",
-  "role": "AUDITOR",
-  "state": "Blocked"
-}
-```
-
----
-
-#### `PUT /api/users/{id}/unlock`
-Unlocks a previously blocked user account.
-
-**Response**
-```json
-{
-  "id": 3,
-  "name": "Juan Perez",
-  "email": "juan@example.com",
-  "role": "AUDITOR",
-  "state": "Asset"
-}
-```
-
----
-
-#### `DELETE /api/users/{id}`
-Deletes a user from the system.
-
-**Example response**
-```json
-{
-  "message": "User deleted successfully"
-}
-```
-
----
-
-### 3. Binnacle
-
-#### `GET /api/binnacle`
-Returns all activity log entries.
-
-**Example response**
-```json
-[
-  {
-    "id": 1,
-    "usurId": 3,
-    "action": "LOGIN_EXITOSO",
-    "dateTime": "2026-03-24T10:15:30"
-  }
-]
-```
-
----
-
-### 4. Service Status
-
-#### `GET /status`
-Checks whether the service is running.
-
-#### `GET /actuator/health`
-Health check endpoint.
-
-#### `GET /actuator/info`
-General service information endpoint.
-
----
-
-## Security
-
-The service uses **Spring Security + JWT** for authentication and authorization.
-
-### Authentication
-- JWT-based authentication
-- Token returned after successful login
-- Requests to protected endpoints must include:
-
-```http
-Authorization: Bearer <token>
-```
-
-### Password Security
-- Passwords are encrypted using **BCrypt**
-
-### Public Endpoints
-- `POST /api/auth/login`
-- `GET /status`
-- `GET /actuator/health`
-- `GET /actuator/info`
-
-### Role-Based Authorization
-
-#### ADMIN
-Can access:
-- Create users
-- List users
-- Update users
-- Delete users
-- Block users
-- Unlock users
-- View binnacle
-- Change password
-
-#### AUDITOR
-Can access:
-- View binnacle
-- Change password
-
-#### FARMACEUTICO
-Can access:
-- Change password
-
----
-
-## Error Handling
-
-The service includes centralized exception management through `GlobalExceptionHandler`.
-
-Error responses are returned using a structured format similar to:
-
-```json
-{
-  "timestamp": "2026-03-24T03:20:00.722373359",
-  "status": 400,
-  "error": "Bad Request",
-  "message": "Rol no encontrado",
-  "path": "/api/users/3/update",
-  "service": "auth-service"
-}
-```
-
-**Recommended behavior**
-- `400 Bad Request` for invalid input or business validation errors
-- `404 Not Found` for missing resources
-- `500 Internal Server Error` only for unexpected failures
-
----
-
-## Configuration
-
-Required environment variables:
-
-- `DB_URL`  
-  PostgreSQL connection URL  
-  Example: `jdbc:postgresql://localhost:5432/authdb`
-
-- `DB_USERNAME`  
-  Database username
-
-- `DB_PASSWORD`  
-  Database password
-
-- `JWT_SECRET`  
-  Secret key used to sign JWT tokens
-
----
-
-## Run Locally
-
-### Prerequisites
 - Java 17
-- PostgreSQL
-- Maven
+- PostgreSQL disponible
+- Variables de entorno configuradas
 
-### Environment Variables
+### PowerShell
+
+```powershell
+$env:DB_URL="jdbc:postgresql://localhost:5432/authdb"
+$env:DB_USERNAME="postgres"
+$env:DB_PASSWORD="tu_clave"
+$env:JWT_SECRET="tu_clave_secreta"
+cd auth-service
+.\mvnw.cmd spring-boot:run
+```
+
+### Linux o macOS
+
 ```bash
 export DB_URL=jdbc:postgresql://localhost:5432/authdb
-export DB_USERNAME=your_username
-export DB_PASSWORD=your_password
-export JWT_SECRET=your_secret_key
-```
-
-### Start the application
-```bash
+export DB_USERNAME=postgres
+export DB_PASSWORD=tu_clave
+export JWT_SECRET=tu_clave_secreta
 cd auth-service
 ./mvnw spring-boot:run
 ```
 
----
+## Docker
 
-## Run with Docker
+Desde la carpeta `auth-service`:
 
 ```bash
 docker build -t auth-service .
 docker run -p 8081:8081 --env-file .env auth-service
 ```
 
----
+## Endpoints principales
 
-## Testing
+Base URL local: `http://localhost:8081`
 
-Run tests with:
+### Autenticacion
 
-```bash
-./mvnw test
+#### `POST /api/auth/login`
+
+Autentica un usuario y retorna un token JWT.
+
+Solicitud:
+
+```json
+{
+  "email": "admin@farmaexpres.com",
+  "password": "ClaveSegura123"
+}
 ```
 
----
+Respuesta:
 
+```json
+{
+  "token": "jwt-token",
+  "type": "Bearer",
+  "email": "admin@farmaexpres.com",
+  "role": "ADMIN",
+  "name": "Juan Perez"
+}
+```
+
+### Usuarios
+
+#### `POST /api/users`
+
+Crea un nuevo usuario.
+
+```json
+{
+  "name": "Juan Perez",
+  "email": "juan@farmaexpres.com",
+  "password": "ClaveSegura123",
+  "role": "ADMIN"
+}
+```
+
+#### `GET /api/users`
+
+Lista los usuarios registrados.
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Juan Perez",
+    "email": "juan@farmaexpres.com",
+    "role": "ADMIN",
+    "state": "Asset"
+  }
+]
+```
+
+#### `PUT /api/users/{id}/update`
+
+Actualiza nombre, correo y/o rol. La actualizacion es parcial segun los campos enviados.
+
+```json
+{
+  "name": "Juan Actualizado",
+  "email": "juan.actualizado@farmaexpres.com",
+  "role": "AUDITOR"
+}
+```
+
+#### `PUT /api/users/{id}/password`
+
+Cambia la contrasena del usuario.
+
+```json
+{
+  "currentpassword": "ClaveActual123",
+  "newPassword": "ClaveNueva123"
+}
+```
+
+Respuesta exitosa:
+
+```text
+Contrasena actualizada correctamente
+```
+
+#### `PUT /api/users/{id}/block`
+
+Bloquea una cuenta.
+
+#### `PUT /api/users/{id}/unlock`
+
+Desbloquea una cuenta.
+
+#### `DELETE /api/users/{id}`
+
+Elimina un usuario.
+
+### Bitacora
+
+#### `GET /api/binnacle`
+
+Devuelve la lista completa de eventos registrados.
+
+### Estado del servicio
+
+#### `GET /status`
+
+Respuesta:
+
+```json
+{
+  "status": "ok"
+}
+```
+
+#### `GET /actuator/health`
+
+Chequeo de salud del servicio.
+
+#### `GET /actuator/info`
+
+Informacion general expuesta por Actuator.
+
+## Seguridad
+
+El proyecto usa JWT y Spring Security. Las peticiones protegidas deben incluir:
+
+```http
+Authorization: Bearer <token>
+```
+
+Endpoints publicos:
+
+- `POST /api/auth/login`
+- `GET /status`
+- `GET /actuator/health`
+- `GET /actuator/info`
+
+Permisos configurados actualmente:
+
+- `ADMIN`: acceso total a `/api/users/**`, consulta de usuarios, bitacora y cambio de contrasena.
+- `AUDITOR`: puede consultar usuarios, consultar bitacora, cambiar contrasena y actualizar usuarios por la regla actual de seguridad.
+- `FARMACEUTICO`: puede cambiar contrasena y actualizar usuarios por la regla actual de seguridad.
+
+Nota: la ruta `PUT /api/users/{id}/update` no esta restringida solo a administradores en la configuracion actual; tambien acepta `AUDITOR` y `FARMACEUTICO`.
+
+## Validaciones implementadas
+
+### Correo
+
+Se valida de forma explicita que:
+
+- no sea nulo ni vacio
+- no contenga espacios
+- tenga una sola arroba
+- la parte local y el dominio tengan formato valido
+- no use dominios internacionalizados en punycode
+- el TLD tenga al menos 2 letras
+
+### Nombre
+
+Se valida y normaliza para que:
+
+- no sea nulo ni vacio
+- elimine espacios sobrantes
+- solo contenga letras y espacios
+
+### Cambio de contrasena
+
+Reglas aplicadas:
+
+- la contrasena actual es obligatoria
+- la nueva contrasena es obligatoria
+- la nueva contrasena debe tener minimo 8 caracteres
+- la nueva contrasena debe ser diferente a la actual
+
+## Manejo de errores
+
+Las excepciones se unifican con `GlobalExceptionHandler` y responden en formato JSON:
+
+```json
+{
+  "timestamp": "2026-04-05T19:20:00Z",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "El correo es obligatorio.",
+  "path": "/api/auth/login",
+  "service": "auth-service"
+}
+```
+
+Codigos frecuentes:
+
+- `400 Bad Request`: errores de validacion o reglas de negocio.
+- `401 Unauthorized`: credenciales invalidas.
+- `403 Forbidden`: usuario sin acceso o cuenta no activa.
+- `404 Not Found`: recurso o rol inexistente.
+- `409 Conflict`: correo ya registrado.
+- `500 Internal Server Error`: error inesperado.
+
+## Pruebas
+
+Para ejecutar las pruebas:
+
+```powershell
+cd auth-service
+.\mvnw.cmd test
+```
+
+En Linux o macOS:
+
+```bash
+cd auth-service
+./mvnw test
+```
