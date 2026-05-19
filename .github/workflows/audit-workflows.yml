@@ -61,6 +61,10 @@ jobs:
 
           matched=0
           for f in "${files[@]}"; do
+            if [[ "${f}" == ".github/workflows/audit-workflows.yml" || "${f}" == ".github/workflows/audit-workflows.yaml" ]]; then
+              echo "Skipping self audit file: ${f}"
+              continue
+            fi
             if [[ -f "${f}" ]]; then
               for p in "${patterns[@]}"; do
                 if grep -nP "${p}" "${f}" >/dev/null 2>&1; then
