@@ -30,44 +30,45 @@ jobs:
             base_sha="${{ github.event.before }}"
           fi
 
+]*-X[[:space:]]*DELETE"
+]*--method=DELETE"
+]*-X[[:space:]]*DELETE"
           if [[ -z "${base_sha}" || "${base_sha}" == "0000000000000000000000000000000000000000" ]]; then
             echo "No valid base SHA available; scanning full workflow files."
-            files=$(ls .github/workflows/*.yml .github/workflows/*.yaml 2>/dev/null || true)
+            mapfile -d '' files < <(find .github/workflows -maxdepth 1 -type f \( -name '*.yml' -o -name '*.yaml' \) -print0 2>/dev/null || true)
           else
-            files=$(git diff --name-only "${base_sha}" "${{ github.sha }}" -- .github/workflows/ || true)
+            mapfile -d '' files < <(git diff -z --name-only "${base_sha}" "${{ github.sha }}" -- .github/workflows/ || true)
           fi
 
-          if [[ -z "${files}" ]]; then
+          if [[ ${#files[@]} -eq 0 ]]; then
             echo "No workflow files changed."
             exit 0
           fi
 
-          echo "Scanning files: ${files}"
+          echo "Scanning files:"
+          printf ' - %s\n' "${files[@]}"
 
           patterns=(
-            "curl[^
-]*-X[[:space:]]*DELETE"
-            "wget[^
-]*--method=DELETE"
-            "gh[[:space:]]+api[^
-]*-X[[:space:]]*DELETE"
-            "\bDELETE[[:space:]]+https?://"
-            "\baz[[:space:]]+.*[[:space:]]+delete\b"
-            "\baws[[:space:]]+.*[[:space:]]+delete\b"
-            "\bgcloud[[:space:]]+.*[[:space:]]+delete\b"
-            "\bkubectl[[:space:]]+delete\b"
-            "\brm[[:space:]]+-rf\b"
-            "\bdel[[:space:]]+/s\b"
-            "\bRemove-Item[[:space:]]+-Recurse[[:space:]]+-Force\b"
+            "curl[^\n]*-X[[:space:]]*DELETE"
+            "wget[^\n]*--method=DELETE"
+            "gh[[:space:]]+api[^\n]*-X[[:space:]]*DELETE"
+            "\\bDELETE[[:space:]]+https?://"
+            "\\baz[[:space:]]+.*[[:space:]]+delete\\b"
+            "\\baws[[:space:]]+.*[[:space:]]+delete\\b"
+            "\\bgcloud[[:space:]]+.*[[:space:]]+delete\\b"
+            "\\bkubectl[[:space:]]+delete\\b"
+            "\\brm[[:space:]]+-rf\\b"
+            "\\bdel[[:space:]]+/s\\b"
+            "\\bRemove-Item[[:space:]]+-Recurse[[:space:]]+-Force\\b"
           )
 
           matched=0
-          for f in ${files}; do
+          for f in "${files[@]}"; do
             if [[ -f "${f}" ]]; then
               for p in "${patterns[@]}"; do
-                if grep -nE "${p}" "${f}" >/dev/null 2>&1; then
+                if grep -nP "${p}" "${f}" >/dev/null 2>&1; then
                   echo "Dangerous command detected in ${f}: pattern ${p}"
-                  grep -nE "${p}" "${f}" || true
+                  grep -nP "${p}" "${f}" || true
                   matched=1
                 fi
               done
