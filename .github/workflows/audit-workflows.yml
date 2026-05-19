@@ -1,0 +1,82 @@
+name: Audit workflow changes
+
+on:
+  push:
+    paths:
+      - ".github/workflows/**"
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan workflow changes for dangerous commands
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            base_sha="${{ github.event.pull_request.base.sha }}"
+          else
+            base_sha="${{ github.event.before }}"
+          fi
+
+          if [[ -z "${base_sha}" || "${base_sha}" == "0000000000000000000000000000000000000000" ]]; then
+            echo "No valid base SHA available; scanning full workflow files."
+            files=$(ls .github/workflows/*.yml .github/workflows/*.yaml 2>/dev/null || true)
+          else
+            files=$(git diff --name-only "${base_sha}" "${{ github.sha }}" -- .github/workflows/ || true)
+          fi
+
+          if [[ -z "${files}" ]]; then
+            echo "No workflow files changed."
+            exit 0
+          fi
+
+          echo "Scanning files: ${files}"
+
+          patterns=(
+            "curl[^
+]*-X[[:space:]]*DELETE"
+            "wget[^
+]*--method=DELETE"
+            "gh[[:space:]]+api[^
+]*-X[[:space:]]*DELETE"
+            "\bDELETE[[:space:]]+https?://"
+            "\baz[[:space:]]+.*[[:space:]]+delete\b"
+            "\baws[[:space:]]+.*[[:space:]]+delete\b"
+            "\bgcloud[[:space:]]+.*[[:space:]]+delete\b"
+            "\bkubectl[[:space:]]+delete\b"
+            "\brm[[:space:]]+-rf\b"
+            "\bdel[[:space:]]+/s\b"
+            "\bRemove-Item[[:space:]]+-Recurse[[:space:]]+-Force\b"
+          )
+
+          matched=0
+          for f in ${files}; do
+            if [[ -f "${f}" ]]; then
+              for p in "${patterns[@]}"; do
+                if grep -nE "${p}" "${f}" >/dev/null 2>&1; then
+                  echo "Dangerous command detected in ${f}: pattern ${p}"
+                  grep -nE "${p}" "${f}" || true
+                  matched=1
+                fi
+              done
+            fi
+          done
+
+          if [[ ${matched} -ne 0 ]]; then
+            echo "Audit failed: dangerous commands found in workflow changes."
+            exit 1
+          fi
+
+          echo "Audit passed: no dangerous commands detected."
